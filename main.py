@@ -10,13 +10,13 @@
 import os
 import sys
 import logging
-from sklearn.ensemble import RandomForestRegressor
 import pandas as pd
 import numpy as np
 import sklearn.preprocessing as preprocessing
 from pandas import DataFrame
 from sklearn import linear_model
-
+from script.age_engineering import set_missing_ages
+from script.age_engineering import set_Cabin_type
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
@@ -36,31 +36,15 @@ def make_dir(dir_path):
 home_dir = os.getcwd()
 data_dir = os.path.join(home_dir, "data")
 result_dir = os.path.join(home_dir, "result")
+script_dir = os.path.join(home_dir,"script")
+
 train_file = os.path.join(data_dir, "train.csv")
 test_file = os.path.join(data_dir, "test.csv")
 predict_file = os.path.join(result_dir, "submission.csv")
 
 make_dir(data_dir)
 make_dir(result_dir)
-
-
-def set_missing_ages(df):
-    age_df = df[['Age', 'Fare', 'Parch', 'SibSp', 'Pclass']]
-    known_age = age_df[age_df.Age.notnull()].as_matrix()
-    unknown_age = age_df[age_df.Age.isnull()].as_matrix()
-    y = known_age[:, 0]
-    X = known_age[:, 1:]
-    rfr = RandomForestRegressor(random_state=0, n_estimators=2000, n_jobs=-1)
-    rfr.fit(X, y)
-    predicted_age = rfr.predict(unknown_age[:, 1::])
-    df.loc[(df.Age.isnull()), 'Age'] = predicted_age
-    return df, rfr
-
-
-def set_Cabin_type(df):
-    df.loc[(df.Cabin.notnull()), 'Cabin'] = "Yes"
-    df.loc[(df.Cabin.notnull()), 'Cabin'] = "Yes"
-    return df
+make_dir(script_dir)
 
 
 data_train = pd.read_csv(train_file)
@@ -142,7 +126,7 @@ bad_cases = origin_data_train.loc[
     origin_data_train['PassengerId'].isin(split_cv[predictions != cv_df.as_matrix()[:, 0]]['PassengerId'].values)]
 
 # ------------------------------写learning curve ----------------------------------------------------------------
-#import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from sklearn.learning_curve import learning_curve
 
 
@@ -209,10 +193,11 @@ train_np = train_df.as_matrix()
 y = train_np[:, 0]
 X = train_np[:, 1:]
 clf = linear_model.LogisticRegression(C=1.0, penalty='l1', tol=1e-6)
-bagging_clf = BaggingRegressor(clf, n_estimators=20, max_samples=0.8, max_features=1.0, bootstrap=True, bootstrap_features=False, n_jobs=-1)
+bagging_clf = BaggingRegressor(clf, n_estimators=20, max_samples=0.8, max_features=1.0, bootstrap=True,
+                               bootstrap_features=False, n_jobs=-1)
 bagging_clf.fit(X, y)
 
 test = df_test.filter(regex='Age_.*|SibSp|Parch|Fare_.*|Cabin_.*|Embarked_.*|Sex_.*|Pclass.*|Mother|Child|Family|Title')
 predictions = bagging_clf.predict(test)
-result = pd.DataFrame({'PassengerId':data_test['PassengerId'].as_matrix(), 'Survived':predictions.astype(np.int32)})
+result = pd.DataFrame({'PassengerId': data_test['PassengerId'].as_matrix(), 'Survived': predictions.astype(np.int32)})
 result.to_csv(predict_file, index=False)
