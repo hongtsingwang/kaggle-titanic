@@ -142,7 +142,7 @@ bad_cases = origin_data_train.loc[
     origin_data_train['PassengerId'].isin(split_cv[predictions != cv_df.as_matrix()[:, 0]]['PassengerId'].values)]
 
 # ------------------------------写learning curve ----------------------------------------------------------------
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from sklearn.learning_curve import learning_curve
 
 
