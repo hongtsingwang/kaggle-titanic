@@ -13,7 +13,7 @@ import logging
 import numpy as np
 import pandas as pd
 from sklearn import linear_model
-from feature_engineering.basic_feature_engineering import create_feature
+from feature_engineering import logistic_feature_enginnerring
 from sklearn.ensemble import BaggingRegressor
 
 reload(sys)
@@ -40,11 +40,11 @@ predict_file = os.path.join(result_dir, "submission.csv")
 # feature engieering之前的必要的数据提取
 pre_statistics = dict()
 pre_statistics['fare_median'] = train['Fare'].median()
+PassengerId = test['PassengerId']
 
 # 特征工程部分, 取文件，提取feature，做预处理
-data_train = create_feature(train_file,pre_statistics)
-data_test = create_feature(test_file,pre_statistics)
-PassengerId = test['PassengerId']
+data_train = logistic_feature_enginnerring.create_feature(train_file,pre_statistics)
+data_test = logistic_feature_enginnerring.create_feature(test_file,pre_statistics)
 
 # 模型训练部分, 训练模型
 train_df = data_train.filter(
@@ -62,12 +62,6 @@ bagging_clf.fit(X, y)
 test = data_test.filter(
     regex='Age_.*|SibSp|Parch|Fare_.*|Cabin_.*|Embarked_.*|Sex_.*|Pclass.*|Mother|Child|Family|Title')
 predictions = bagging_clf.predict(test)
-
-
-# Generate Submission File
-StackingSubmission = pd.DataFrame({'PassengerId': PassengerId,
-                                   'Survived': predictions})
-StackingSubmission.to_csv("StackingSubmission.csv", index=False)
 
 
 # 结果提交部分， 提交结果

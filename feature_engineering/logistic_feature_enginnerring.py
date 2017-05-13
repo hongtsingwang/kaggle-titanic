@@ -51,19 +51,7 @@ def set_missing_ages_2(df):
         print "%s age:%d" % (salutation, age_predict)
     df.loc[(df['Age'].isnull())] = 0  # 代表无法预测其年龄
     return df
-
-
-def age_partition(df):
-    """
-    以年龄段分隔
-    """
-    bins = [0, 16, 32, 48, 64,80]
-    labels = [1, 2, 3, 4, 5]
-    ages = pd.cut(df.Age, bins, labels=labels)
-    age_dummies = pd.get_dummies(ages, prefix="Age")
-    df = pd.concat([df, age_dummies], axis=1)
-    return df
-
+    
 
 def cabin_feature(data_frame):
     """
@@ -105,22 +93,26 @@ def embark_feature(data_frame):
 
 
 def age_feature(data_frame):
-    data_frame.loc[(data_frame['Fare'].isnull()), 'Fare'] = 0
-    data_frame = age_partition(data_frame)
-    return data_frame
+    """
+    以年龄段分隔
+    """
+    bins = [0, 16, 32, 48, 64,80]
+    labels = [1, 2, 3, 4, 5]
+    ages = pd.cut(data_frame['Age'], bins, labels=labels)
+    age_dummies = pd.get_dummies(ages, prefix="Age")
+    return age_dummies
 
 
-def fare_feature(data_frame, fare_median):
+def fare_feature(data_frame):
     """
     票价相关feature
     :param data_frame: 
     :return: 
     """
-    data_frame.loc[(data_frame['Fare'].isnull()), 'Fare'] = fare_median
     bins = [0, 7.91, 14.454, 31, 10000000000]
-    data_frame["fare_cut"] = pd.cut(data_frame["Fare"], bins=bins, labels=[0, 1, 2, 3, 4])
-    fare_frame = data_frame["Fare"]
-    return fare_frame
+    data_frame["fare_cut"] = pd.cut(data_frame["Fare"], bins=bins, labels=[1, 2, 3, 4])
+    dummies_fare = pd.get_dummies(data_frame["fare_cut"], prefix="fare")
+    return dummies_fare
 
 
 def get_title(name):
@@ -166,13 +158,16 @@ def create_feature(file_name, pre_statistics):
     :return: 
     """
     data_frame = pd.read_csv(file_name, header=0)
-    fare_median = pre_statistics["fare_median"]
-    fare_frame = fare_feature(data_frame, fare_median)
+    fare_frame = fare_feature(data_frame)
     cabin_frame = cabin_feature(data_frame)
     pclass_frame = pclass_feature(data_frame)
     sex_frame = sex_feature(data_frame)
+    family_frame = family_feature(data_frame)
+    name_frame = name_feature(data_frame)
+    age_frame = age_feature(data_frame)
+    embark_frame = embark_feature(data_frame)
     df = pd.concat([data_frame, fare_frame, cabin_frame,
-                    sex_frame, pclass_frame], axis=1)
+                    sex_frame, pclass_frame, family_frame, name_frame,age_frame], axis=1)
     df.drop(['Pclass', 'Name', 'Sex', 'Ticket',
              'Cabin', 'Embarked','SibSp'], axis=1, inplace=True)
-    return data_frame
+    return df
