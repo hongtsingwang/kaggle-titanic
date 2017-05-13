@@ -15,11 +15,6 @@ import logging
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-# parser = argparse.ArgumentParser()
-# parser.add_argument()
-# args = parser.parse_args()
-
-# output = args.output
 logging.basicConfig(
     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
     level=logging.DEBUG,
@@ -31,15 +26,6 @@ import numpy as np
 import re
 import sklearn
 import xgboost as xgb
-import seaborn as sns
-import matplotlib.pyplot as plt
-% matplotlib
-inline
-import plotly.offline as py
-
-py.init_notebook_mode(connected=True)
-import plotly.graph_objs as go
-import plotly.tools as tls
 
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier, \
     ExtraTreesClassifier
@@ -49,6 +35,7 @@ from sklearn.cross_validation import KFold;
 train = pd.read_csv("data/train.csv")
 test = pd.read_csv('data/test.csv')
 
+PassengerId = test['PassengerId']
 full_data = [train, test]
 
 train["name_length"] = train["Name"].apply(len)
@@ -75,7 +62,6 @@ for dataset in full_data:
 for dataset in full_data:
     dataset['Fare'] = dataset['Fare'].fillna(train['Fare'].median())
 
-# TODO ???
 train['CategoricalFare'] = pd.qcut(train['Fare'], 4)
 
 # Create a New feature CategoricalAge
@@ -136,19 +122,13 @@ for dataset in full_data:
     dataset.loc[(dataset['Age'] > 16) & (dataset['Age'] <= 32), 'Age'] = 1
     dataset.loc[(dataset['Age'] > 32) & (dataset['Age'] <= 48), 'Age'] = 2
     dataset.loc[(dataset['Age'] > 48) & (dataset['Age'] <= 64), 'Age'] = 3
-    dataset.loc[dataset['Age'] > 64, 'Age'];  # TODO ？？？ 什么情况
+    dataset.loc[dataset['Age'] > 64, 'Age'] = 4;  # TODO ？？？ 什么情况
 
 # Feature selection
 drop_elements = ['PassengerId', 'Name', 'Ticket', 'Cabin', 'SibSp']
 train = train.drop(drop_elements, axis=1)
 train = train.drop(['CategoricalAge', 'CategoricalFare'], axis=1)
 test = test.drop(drop_elements, axis=1)
-
-colormap = plt.cm.viridis
-plt.figure(figsize=(12, 12))
-plt.title('Pearson Correlation of Features', y=1.05, size=15)
-sns.heatmap(train.astype(float).corr(), linewidths=0.1, vmax=1.0, square=True, cmap=colormap, linecolor='white',
-            annot=True)
 
 # Some useful parameters which will come in handy later on
 ntrain = train.shape[0]
@@ -175,6 +155,7 @@ class SklearnHelper(object):
 
     def feature_importances(self, x, y):
         print(self.clf.fit(x, y).feature_importances_)
+        return self.clf.fit(x, y).feature_importances_    
 
 
 def get_oof(clf, x_train, y_train, x_test):
@@ -195,14 +176,10 @@ def get_oof(clf, x_train, y_train, x_test):
     oof_test[:] = oof_test_skf.mean(axis=0)
     return oof_train.reshape(-1, 1), oof_test.reshape(-1, 1)
 
-
-# Put in our parameters for said classifiers
-# Random Forest parameters
 rf_params = {
     'n_jobs': -1,
     'n_estimators': 500,
     'warm_start': True,
-    # 'max_features': 0.2,
     'max_depth': 6,
     'min_samples_leaf': 2,
     'max_features': 'sqrt',
@@ -213,7 +190,6 @@ rf_params = {
 et_params = {
     'n_jobs': -1,
     'n_estimators': 500,
-    # 'max_features': 0.5,
     'max_depth': 8,
     'min_samples_leaf': 2,
     'verbose': 0
@@ -266,219 +242,8 @@ et_feature = et.feature_importances(x_train, y_train)
 ada_feature = ada.feature_importances(x_train, y_train)
 gb_feature = gb.feature_importances(x_train, y_train)
 
-rf_features = [0.10474135, 0.21837029, 0.04432652, 0.02249159, 0.05432591, 0.02854371
-    , 0.07570305, 0.01088129, 0.24247496, 0.13685733, 0.06128402]
-et_features = [0.12165657, 0.37098307, 0.03129623, 0.01591611, 0.05525811, 0.028157
-    , 0.04589793, 0.02030357, 0.17289562, 0.04853517, 0.08910063]
-ada_features = [0.028, 0.008, 0.012, 0.05866667, 0.032, 0.008
-    , 0.04666667, 0., 0.05733333, 0.73866667, 0.01066667]
-gb_features = [0.06796144, 0.03889349, 0.07237845, 0.02628645, 0.11194395, 0.04778854
-    , 0.05965792, 0.02774745, 0.07462718, 0.4593142, 0.01340093]
 
 cols = train.columns.values
-# Create a dataframe with features
-feature_dataframe = pd.DataFrame({'features': cols,
-                                  'Random Forest feature importances': rf_features,
-                                  'Extra Trees  feature importances': et_features,
-                                  'AdaBoost feature importances': ada_features,
-                                  'Gradient Boost feature importances': gb_features
-                                  })
-
-# Scatter plot
-trace = go.Scatter(
-    y=feature_dataframe['Random Forest feature importances'].values,
-    x=feature_dataframe['features'].values,
-    mode='markers',
-    marker=dict(
-        sizemode='diameter',
-        sizeref=1,
-        size=25,
-        #       size= feature_dataframe['AdaBoost feature importances'].values,
-        # color = np.random.randn(500), #set color equal to a variable
-        color=feature_dataframe['Random Forest feature importances'].values,
-        colorscale='Portland',
-        showscale=True
-    ),
-    text=feature_dataframe['features'].values
-)
-data = [trace]
-
-layout = go.Layout(
-    autosize=True,
-    title='Random Forest Feature Importance',
-    hovermode='closest',
-    #     xaxis= dict(
-    #         title= 'Pop',
-    #         ticklen= 5,
-    #         zeroline= False,
-    #         gridwidth= 2,
-    #     ),
-    yaxis=dict(
-        title='Feature Importance',
-        ticklen=5,
-        gridwidth=2
-    ),
-    showlegend=False
-)
-fig = go.Figure(data=data, layout=layout)
-py.iplot(fig, filename='scatter2010')
-
-# Scatter plot
-trace = go.Scatter(
-    y=feature_dataframe['Extra Trees  feature importances'].values,
-    x=feature_dataframe['features'].values,
-    mode='markers',
-    marker=dict(
-        sizemode='diameter',
-        sizeref=1,
-        size=25,
-        #       size= feature_dataframe['AdaBoost feature importances'].values,
-        # color = np.random.randn(500), #set color equal to a variable
-        color=feature_dataframe['Extra Trees  feature importances'].values,
-        colorscale='Portland',
-        showscale=True
-    ),
-    text=feature_dataframe['features'].values
-)
-data = [trace]
-
-layout = go.Layout(
-    autosize=True,
-    title='Extra Trees Feature Importance',
-    hovermode='closest',
-    #     xaxis= dict(
-    #         title= 'Pop',
-    #         ticklen= 5,
-    #         zeroline= False,
-    #         gridwidth= 2,
-    #     ),
-    yaxis=dict(
-        title='Feature Importance',
-        ticklen=5,
-        gridwidth=2
-    ),
-    showlegend=False
-)
-fig = go.Figure(data=data, layout=layout)
-py.iplot(fig, filename='scatter2010')
-
-# Scatter plot
-trace = go.Scatter(
-    y=feature_dataframe['AdaBoost feature importances'].values,
-    x=feature_dataframe['features'].values,
-    mode='markers',
-    marker=dict(
-        sizemode='diameter',
-        sizeref=1,
-        size=25,
-        #       size= feature_dataframe['AdaBoost feature importances'].values,
-        # color = np.random.randn(500), #set color equal to a variable
-        color=feature_dataframe['AdaBoost feature importances'].values,
-        colorscale='Portland',
-        showscale=True
-    ),
-    text=feature_dataframe['features'].values
-)
-data = [trace]
-
-layout = go.Layout(
-    autosize=True,
-    title='AdaBoost Feature Importance',
-    hovermode='closest',
-    #     xaxis= dict(
-    #         title= 'Pop',
-    #         ticklen= 5,
-    #         zeroline= False,
-    #         gridwidth= 2,
-    #     ),
-    yaxis=dict(
-        title='Feature Importance',
-        ticklen=5,
-        gridwidth=2
-    ),
-    showlegend=False
-)
-fig = go.Figure(data=data, layout=layout)
-py.iplot(fig, filename='scatter2010')
-
-# Scatter plot
-trace = go.Scatter(
-    y=feature_dataframe['Gradient Boost feature importances'].values,
-    x=feature_dataframe['features'].values,
-    mode='markers',
-    marker=dict(
-        sizemode='diameter',
-        sizeref=1,
-        size=25,
-        #       size= feature_dataframe['AdaBoost feature importances'].values,
-        # color = np.random.randn(500), #set color equal to a variable
-        color=feature_dataframe['Gradient Boost feature importances'].values,
-        colorscale='Portland',
-        showscale=True
-    ),
-    text=feature_dataframe['features'].values
-)
-data = [trace]
-
-layout = go.Layout(
-    autosize=True,
-    title='Gradient Boosting Feature Importance',
-    hovermode='closest',
-    #     xaxis= dict(
-    #         title= 'Pop',
-    #         ticklen= 5,
-    #         zeroline= False,
-    #         gridwidth= 2,
-    #     ),
-    yaxis=dict(
-        title='Feature Importance',
-        ticklen=5,
-        gridwidth=2
-    ),
-    showlegend=False
-)
-fig = go.Figure(data=data, layout=layout)
-py.iplot(fig, filename='scatter2010')
-
-# Create the new column containing the average of values
-
-feature_dataframe['mean'] = feature_dataframe.mean(axis=1)  # axis = 1 computes the mean row-wise
-feature_dataframe.head(3)
-
-y = feature_dataframe['mean'].values
-x = feature_dataframe['features'].values
-data = [go.Bar(
-    x=x,
-    y=y,
-    width=0.5,
-    marker=dict(
-        color=feature_dataframe['mean'].values,
-        colorscale='Portland',
-        showscale=True,
-        reversescale=False
-    ),
-    opacity=0.6
-)]
-
-layout = go.Layout(
-    autosize=True,
-    title='Barplots of Mean Feature Importance',
-    hovermode='closest',
-    #     xaxis= dict(
-    #         title= 'Pop',
-    #         ticklen= 5,
-    #         zeroline= False,
-    #         gridwidth= 2,
-    #     ),
-    yaxis=dict(
-        title='Feature Importance',
-        ticklen=5,
-        gridwidth=2
-    ),
-    showlegend=False
-)
-fig = go.Figure(data=data, layout=layout)
-py.iplot(fig, filename='bar-direct-labels')
 
 base_predictions_train = pd.DataFrame({'RandomForest': rf_oof_train.ravel(),
                                        'ExtraTrees': et_oof_train.ravel(),
@@ -491,11 +256,9 @@ x_train = np.concatenate((et_oof_train, rf_oof_train, ada_oof_train, gb_oof_trai
 x_test = np.concatenate((et_oof_test, rf_oof_test, ada_oof_test, gb_oof_test, svc_oof_test), axis=1)
 
 gbm = xgb.XGBClassifier(
-    # learning_rate = 0.02,
     n_estimators=2000,
     max_depth=4,
     min_child_weight=2,
-    # gamma=1,
     gamma=0.9,
     subsample=0.8,
     colsample_bytree=0.8,
@@ -505,7 +268,6 @@ gbm = xgb.XGBClassifier(
 predictions = gbm.predict(x_test)
 
 # Generate Submission File
-PassengerId = test['PassengerId']
 StackingSubmission = pd.DataFrame({'PassengerId': PassengerId,
                                    'Survived': predictions})
 StackingSubmission.to_csv("StackingSubmission.csv", index=False)
