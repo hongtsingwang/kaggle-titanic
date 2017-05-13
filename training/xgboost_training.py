@@ -24,11 +24,6 @@ import xgboost as xgb
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-# parser = argparse.ArgumentParser()
-# parser.add_argument()
-# args = parser.parse_args()
-
-# output = args.output
 logging.basicConfig(
     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
     level=logging.DEBUG,
@@ -94,7 +89,8 @@ def training(train, test):
         'n_estimators': 500,
         # 'max_features': 0.2,
         'max_depth': 5,
-        'min_samples_leaf': 2,
+        sh whq@10.11.147.21
+        min_samples_leaf': 2,
         'verbose': 0
     }
 
